@@ -6,8 +6,7 @@ automatically. No intermediary, no chargebacks, no "he said, she said."
 
 ## Live deployments (GenLayer StudioNet, chain `61999`)
 
-- **Test deployment:** `0x1290Bb9a5B6b897f01184bdC5650c5065896E570` — [explorer](https://explorer-studio.genlayer.com/address/0x1290Bb9a5B6b897f01184bdC5650c5065896E570) · this is where the 9/9 verification run happened.
-- **Production:** pending — deploying from my own wallet next; the contract file does not change.
+- **Contract:** `0x1290Bb9a5B6b897f01184bdC5650c5065896E570` — [explorer](https://explorer-studio.genlayer.com/address/0x1290Bb9a5B6b897f01184bdC5650c5065896E570) · deployed and verified on StudioNet.
 - **Verification record:** [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — specs, the 9/9 pass table, and every transaction hash with explorer links.
 - **Test suite:** [`tests/`](tests/) — the runnable end-to-end suite, with raw results in [`tests/results/`](tests/results/).
 
@@ -49,11 +48,10 @@ to TOTAL_LOSS, so fake evidence can't steal escrow.
 Tested end-to-end on StudioNet: 9/9 scenarios passed, payouts verified to the
 wei — see `docs/VERIFICATION.md` for the full evidence with explorer links.
 
-- [x] Contract written, deployed, and verified on StudioNet test deployment
+- [x] Contract written, deployed, and verified on StudioNet
 - [x] Dashboard built (shipment cards, jury verdicts, owner controls)
-- [ ] Production deployment from my own wallet
-- [ ] GitHub repo + Vercel dashboard with production address
-- [ ] Production smoke test (two wallets)
+- [x] Test suite runnable with committed raw results
+- [ ] Vercel dashboard with the contract address
 
 ## Stack
 

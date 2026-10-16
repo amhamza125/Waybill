@@ -26,7 +26,7 @@ Keep a Changelog, and versioning follows SemVer.
 
 ### Verified
 - Deployed and tested on GenLayer StudioNet (chain 61999).
-- Test deployment: `0x1290Bb9a5B6b897f01184bdC5650c5065896E570`
+- Deployment: `0x1290Bb9a5B6b897f01184bdC5650c5065896E570`
   (https://explorer-studio.genlayer.com/address/0x1290Bb9a5B6b897f01184bdC5650c5065896E570)
 - 9/9 scenarios passed; payout transactions FINALIZED; shipper 100 -> 99.25
   GEN and carrier 0 -> 0.75 GEN matched contract records exactly.

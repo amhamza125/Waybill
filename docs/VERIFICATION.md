@@ -27,7 +27,7 @@ jury, not by whoever shouts loudest.
 
 ## 2. How I tested it
 
-I ran the suite in `tests/` against the StudioNet test deployment of this
+The suite in `tests/` runs against the StudioNet deployment of this
 exact contract file:
 
 - Test contract: `0x1290Bb9a5B6b897f01184bdC5650c5065896E570`
@@ -82,11 +82,10 @@ to see it on the explorer:
 
 ## 3. Honest notes
 
-- These tests ran against the StudioNet **test deployment** of this exact
-  contract file. The verdicts, splits, and payouts above are real on-chain
-  results, not simulations.
-- The production deployment from my own wallet is the next step. The contract
-  file does not change between the test deployment and production.
+- These tests ran against the StudioNet deployment of this contract. The
+  verdicts, splits, and payouts above are real on-chain results, not
+  simulations.
+- The contract file is final.
 - The jury is only as good as the photo: a clear, well-lit picture of the
   goods gives a confident verdict. That is by design — unclear evidence fails
   safe toward the shipper.

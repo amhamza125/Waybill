@@ -18,7 +18,7 @@ node finalize.mjs
 ```
 
 - `WB_CONTRACT` — the Waybill deployment to test. Defaults to the StudioNet
-  test deployment documented in `docs/VERIFICATION.md`.
+  StudioNet deployment documented in `docs/VERIFICATION.md`.
 - `WB_KEY_A` — shipper wallet (creates shipments, locks escrow, owns the pause switch).
 - `WB_KEY_B` — carrier wallet (submits evidence, receives payouts).
 - Keys go through environment variables only. Nothing with a private key is
