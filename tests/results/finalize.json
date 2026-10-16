@@ -1,0 +1,15 @@
+{
+  "payouts_ok": true,
+  "shipper_before": "100.0000",
+  "shipper_after": "99.2500",
+  "shipper_expected": "99.2500",
+  "carrier_before": "0.0000",
+  "carrier_after": "0.7500",
+  "carrier_expected": "0.7500",
+  "tx_statuses": {
+    "assess0": "FINALIZED",
+    "assess1": "FINALIZED",
+    "cancel2": "FINALIZED",
+    "assess3": "FINALIZED"
+  }
+}

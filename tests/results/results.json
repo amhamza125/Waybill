@@ -1,0 +1,78 @@
+{
+  "contract": "0x1290Bb9a5B6b897f01184bdC5650c5065896E570",
+  "shipper": "0xD2aF69BB67d446526661A80a280820599c601ed3",
+  "carrier": "0x0BbA411375d7074178980E610B5311dD6Ed34d74",
+  "steps": [
+    {
+      "name": "protocol_state",
+      "pass": true,
+      "info": "{\"paused\":false,\"owner\":\"0xD2aF69BB67d446526661A80a280820599c601ed3\",\"shipment_count\":\"0\",\"total_assessed\":\"0\",\"contract_balance_wei\":\"0\"}"
+    },
+    {
+      "name": "create_shipment_escrow",
+      "pass": true,
+      "info": "status=CREATED escrow=500000000000000000"
+    },
+    {
+      "name": "submit_evidence",
+      "pass": true,
+      "info": "status=IN_REVIEW"
+    },
+    {
+      "name": "jury_intact",
+      "pass": true,
+      "info": "verdict=INTACT conf=95 carrier_payout=500000000000000000 refund=0 notes=\"The sealed retail box shows no visible signs of impact, crushing, or water damage.\""
+    },
+    {
+      "name": "jury_damaged",
+      "pass": true,
+      "info": "verdict=TOTAL_LOSS conf=99 carrier_payout=0 refund=500000000000000000 notes=\"Box is completely destroyed with the front torn open, and the glass contents are visibly shattered into fragments with no salvageable items remaining.\""
+    },
+    {
+      "name": "cancel_refund",
+      "pass": true,
+      "info": "status=CANCELLED"
+    },
+    {
+      "name": "pause_gate",
+      "pass": true,
+      "info": "assess while paused -> execution_result=ERROR"
+    },
+    {
+      "name": "resume_then_assess",
+      "pass": true,
+      "info": "verdict=INTACT status=RESOLVED"
+    },
+    {
+      "name": "aggregate_reads",
+      "pass": true,
+      "info": "shipments=4 history_events=13 assessed=3 contract_balance_wei=250000000000000000"
+    }
+  ],
+  "txs": {
+    "create0": "0x5535c972fc9c909bb05e8f905a22b334827aaedb439d17e15e6416006ce720e8",
+    "evidence0": "0x9dc1d1ec413557a00ada106971da92a6c0d39c1011453c858daedee518a209e8",
+    "assess0": "0x260042094e80d173b4ef9410079a79b249f5af5cb91914cdb4759f878fa4cbfa",
+    "create1": "0x6cb26252ae0c6961ffc03db93fc097680b4c8946b2662be81e3cdb5def39cc24",
+    "evidence1": "0x003434149948092bd4cb668f6ea8dc21f444a9d56320cb68715e40366049fcb9",
+    "assess1": "0x441274a56f36cc1e50f0ef72c7363811c4c60d22673f987c02beffa4fd17dad5",
+    "create2": "0x010c7c5873c49c545137faf3b3b25e49be278a6b28ce22741c3e9d6f0c69b83d",
+    "cancel2": "0xd1c5687f549e14665135a22a195343431d77a79da0ef0a94146bff3582433d68",
+    "create3": "0x0801c779cc1c6da70155c75a961abfd192cccdfb31fd652810852485f12d4f0b",
+    "pause": "0x7784015965bfdf07a6037172d3d77afcf4f48e75e4f5d07b68677a8d6b0dce2a",
+    "assessPaused": "0x9bb452cbbb3d8efaa8e845e2df740cce93486b28e03b0f4ddacda18d1434ed79",
+    "resume": "0x2fa9bad5ae3170803b7ae2538485e4346f28a99cbcaacdc6d74a5a60833ab3c2",
+    "assess3": "0x70d1bbc228ac9dcf73eba90a11cb5e3f26efe271d6ba2f7751986305467875cb"
+  },
+  "balances": {
+    "shipper_start": "100000000000000000100",
+    "carrier_start": "0"
+  },
+  "finalState": {
+    "paused": false,
+    "owner": "0xD2aF69BB67d446526661A80a280820599c601ed3",
+    "shipment_count": "4",
+    "total_assessed": "3",
+    "contract_balance_wei": "250000000000000000"
+  }
+}

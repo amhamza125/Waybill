@@ -1,0 +1,15 @@
+shipper start GEN: 100 | carrier start GEN: 0
+[PASS] protocol_state :: {"paused":false,"owner":"0xD2aF69BB67d446526661A80a280820599c601ed3","shipment_count":"0","total_assessed":"0","contract_balance_wei":"0"}
+create0 tx 0x5535c972fc9c909bb05e8f905a22b334827aaedb439d17e15e6416006ce720e8
+[PASS] create_shipment_escrow :: status=CREATED escrow=500000000000000000
+evidence0 tx 0x9dc1d1ec413557a00ada106971da92a6c0d39c1011453c858daedee518a209e8
+[PASS] submit_evidence :: status=IN_REVIEW
+assess0 tx (jury running) 0x260042094e80d173b4ef9410079a79b249f5af5cb91914cdb4759f878fa4cbfa
+[PASS] jury_intact :: verdict=INTACT conf=95 carrier_payout=500000000000000000 refund=0 notes="The sealed retail box shows no visible signs of impact, crushing, or water damage."
+assess1 tx (jury running) 0x441274a56f36cc1e50f0ef72c7363811c4c60d22673f987c02beffa4fd17dad5
+[PASS] jury_damaged :: verdict=TOTAL_LOSS conf=99 carrier_payout=0 refund=500000000000000000 notes="Box is completely destroyed with the front torn open, and the glass contents are visibly shattered into fragments with no salvageable items remaining."
+[PASS] cancel_refund :: status=CANCELLED
+[PASS] pause_gate :: assess while paused -> execution_result=ERROR
+[PASS] resume_then_assess :: verdict=INTACT status=RESOLVED
+[PASS] aggregate_reads :: shipments=4 history_events=13 assessed=3 contract_balance_wei=250000000000000000
+MAIN TEST DONE
