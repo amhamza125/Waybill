@@ -14,6 +14,13 @@ jury, not by whoever shouts loudest.
   INTACT, MINOR_DAMAGE, MAJOR_DAMAGE, or TOTAL_LOSS, with a confidence score.
   If the photo is unusable or shows no shipment at all, it fails safe to
   TOTAL_LOSS — the carrier gets nothing. Fake evidence can't steal escrow.
+- **Cryptographically bound evidence (v2).** When evidence is submitted, the
+  SHA-256 of the photo bytes is committed on-chain. The jury can only grade
+  bytes that hash to the committed value — swapping the photo afterwards
+  fails closed with no state change.
+- **Participant-only assessment (v2).** Only the shipper or the carrier of a
+  shipment can trigger the jury. Outsiders are rejected before any verdict
+  logic runs.
 - **Automatic split payouts.** The verdict decides the money, and the
   contract sends it as real value transfers at finalization:
   INTACT pays the carrier 100%, MINOR_DAMAGE splits 85/15,
@@ -30,15 +37,16 @@ jury, not by whoever shouts loudest.
 The suite in `tests/` runs against the StudioNet deployment of this
 exact contract file:
 
-- Test contract: `0x1290Bb9a5B6b897f01184bdC5650c5065896E570`
-  ([explorer](https://explorer-studio.genlayer.com/address/0x1290Bb9a5B6b897f01184bdC5650c5065896E570))
+- Test contract: `0x22e6c4314c4c8D07b1875cB447C89778DbB11f42`
+  ([explorer](https://explorer-studio.genlayer.com/address/0x22e6c4314c4c8D07b1875cB447C89778DbB11f42))
 - Network: GenLayer StudioNet, chain 61999
-- Wallets: two test wallets, one as shipper (creates shipments, locks escrow)
-  and one as carrier (submits evidence, receives payouts)
+- Wallets: three test wallets — one as shipper (creates shipments, locks
+  escrow), one as carrier (submits evidence, receives payouts), and a third
+  as an outsider for the negative security tests
 - The suite is runnable: `tests/README.md` has the commands. Keys go through
   environment variables only — nothing with a private key is in this repo.
 
-**9/9 scenarios passed.** Raw results are committed in
+**11/11 scenarios passed.** Raw results are committed in
 `tests/results/results.json`, `tests/results/finalize.json`, and the
 human-readable `tests/results/test-log.txt`.
 
@@ -46,39 +54,48 @@ human-readable `tests/results/test-log.txt`.
 |---|----------|--------|----------------|
 | 1 | protocol_state | PASS | Clean start: not paused, 0 shipments, 0 balance |
 | 2 | create_shipment_escrow | PASS | 0.5 GEN locked, status CREATED |
-| 3 | submit_evidence | PASS | Photo + note accepted, status IN_REVIEW |
-| 4 | jury_intact | PASS | INTACT at 95% confidence, carrier paid the full 0.5 GEN |
+| 3 | submit_evidence | PASS | Photo + note + SHA-256 commitment accepted, status IN_REVIEW |
+| 4 | jury_intact | PASS | INTACT at 98% confidence, carrier paid the full 0.5 GEN |
 | 5 | jury_damaged | PASS | TOTAL_LOSS at 99% confidence, shipper refunded the full 0.5 GEN |
 | 6 | cancel_refund | PASS | Shipment cancelled before evidence, status CANCELLED |
 | 7 | pause_gate | PASS | Assessment while paused fails with execution ERROR, state untouched |
 | 8 | resume_then_assess | PASS | After resume, assessment works: INTACT, RESOLVED |
-| 9 | aggregate_reads | PASS | 4 shipments, 13 history events, balances consistent |
+| 9 | outsider_assessment_blocked | PASS | Third wallet's assessment rejected with ONLY_PARTY_ASSESS, shipment stays IN_REVIEW, no payout |
+| 10 | evidence_mismatch_blocked | PASS | Assessment with swapped photo bytes rejected with EVIDENCE_MISMATCH, shipment stays IN_REVIEW, no payout |
+| 11 | aggregate_reads | PASS | 6 shipments, 17 history events, balances consistent |
 
 **Payouts verified to the wei** (`tests/results/finalize.json`):
 
 | Wallet | Before | After | Expected | Match |
 |--------|--------|-------|----------|-------|
-| Shipper | 100.0000 GEN | 99.2500 GEN | 99.2500 GEN | yes |
-| Carrier | 0.0000 GEN | 0.7500 GEN | 0.7500 GEN | yes |
+| Shipper | 83.5500 GEN | 82.3000 GEN | 82.3000 GEN | yes |
+| Carrier | 6.7500 GEN | 7.5000 GEN | 7.5000 GEN | yes |
 
 Every write transaction below reached FINALIZED on StudioNet. Click any hash
 to see it on the explorer:
 
 | Tx | Hash |
 |----|------|
-| create0 | [0x5535c972…e720e8](https://explorer-studio.genlayer.com/tx/0x5535c972fc9c909bb05e8f905a22b334827aaedb439d17e15e6416006ce720e8) |
-| evidence0 | [0x9dc1d1ec…209e8](https://explorer-studio.genlayer.com/tx/0x9dc1d1ec413557a00ada106971da92a6c0d39c1011453c858daedee518a209e8) |
-| assess0 | [0x26004209…cbfa](https://explorer-studio.genlayer.com/tx/0x260042094e80d173b4ef9410079a79b249f5af5cb91914cdb4759f878fa4cbfa) |
-| create1 | [0x6cb26252…9cc24](https://explorer-studio.genlayer.com/tx/0x6cb26252ae0c6961ffc03db93fc097680b4c8946b2662be81d3b3b25e49be278a6b28ce22741c3e9d6f0c69b83d) |
-| evidence1 | [0x00343414…49fcb9](https://explorer-studio.genlayer.com/tx/0x003434149948092bd4cb668f6ea8dc21f444a9d56320cb68715e40366049fcb9) |
-| assess1 | [0x441274a5…d17dad5](https://explorer-studio.genlayer.com/tx/0x441274a56f36cc1e50f0ef72c7363811c4c60d22673f987c02beffa4fd17dad5) |
-| create2 | [0x010c7c58…0ef0a9](https://explorer-studio.genlayer.com/tx/0x010c7c5873c49c545137faf3b3b25e49be278a6b28ce22741c3e9d6f0c69b83d) |
-| cancel2 | [0xd1c5687f…2433d68](https://explorer-studio.genlayer.com/tx/0xd1c5687f549e14665135a22a195343431d77a79da0ef0a94146bff3582433d68) |
-| create3 | [0x0801c779…12d4f0b](https://explorer-studio.genlayer.com/tx/0x0801c779cc1c6da70155c75a961abfd192cccdfb31fd652810852485f12d4f0b) |
-| pause | [0x77840159…0dce2a](https://explorer-studio.genlayer.com/tx/0x7784015965bfdf07a6037172d3d77afcf4f48e75e4f5d07b68677a8d6b0dce2a) |
-| assessPaused | [0x9bb452cb…d1434ed79](https://explorer-studio.genlayer.com/tx/0x9bb452cbbb3d8efaa8e845e2df740cce93486b28e03b0f4ddacda18d1434ed79) |
-| resume | [0x2fa9bad5…2433d68](https://explorer-studio.genlayer.com/tx/0x2fa9bad5ae3170803b7ae2538485e4346f28a99cbcaacdc6d74a5a60833ab3c2) |
-| assess3 | [0x70d1bbc2…7875cb](https://explorer-studio.genlayer.com/tx/0x70d1bbc228ac9dcf73eba90a11cb5e3f26efe271d6ba2f7751986305467875cb) |
+| deploy | [0x62a876a2…ca4ab6](https://explorer-studio.genlayer.com/tx/0x62a876a2aaf9dc882954f1276e4967328be1f648d9690645731fb9bffca4ab6a) |
+| create0 | [0x5716ba8f…5e88d02](https://explorer-studio.genlayer.com/tx/0x5716ba8ff3352d263384ac7dacb469b2cbd8ed8d7cef94cfc2ad162cc5e88d02) |
+| evidence0 | [0xb56048e0…9f2c3d](https://explorer-studio.genlayer.com/tx/0xb56048e0e840d293d65eee3fa2c276b850acc51a37fd7b2be5509998509f2c3d) |
+| assess0 | [0x5c813bbe…4527ac8](https://explorer-studio.genlayer.com/tx/0x5c813bbe8fe3e23e44a5b1841a7c5beb8718a822be7b17de50b3074527ac8543) |
+| create1 | [0x6536e648…438b7f52](https://explorer-studio.genlayer.com/tx/0x6536e648267a6ce9c15ef44a1598b312e97ba7ac2db1721d6098d968438b7f52) |
+| evidence1 | [0xd2783573…05c23a61](https://explorer-studio.genlayer.com/tx/0xd2783573acb919c3cd2fac15beea7effb18d6561d4f2fb4036bbfff05c23a61b) |
+| assess1 | [0x6bd7975e…b621963d](https://explorer-studio.genlayer.com/tx/0x6bd7975e0d7fb5a10e803534befb53befb6dac43da8360f24e7d6b5b621963d1) |
+| create2 | [0x0b823400…517945b3](https://explorer-studio.genlayer.com/tx/0x0b82340088e3ca7c87968d75fd528af9234c18df1af7a647c9ccc0b3517945b3) |
+| cancel2 | [0x5f7741f6…6363d9eb](https://explorer-studio.genlayer.com/tx/0x5f7741f614186b3c06f7be0305d0d23eba857aec43bf01c4e2e2bf166363d9eb) |
+| create3 | [0xbfc2da86…f732d70](https://explorer-studio.genlayer.com/tx/0xbfc2da866f816e109f80188a5c093b294e44e9829549d13dc5e9ae046f732d70) |
+| pause | [0x02dcff67…0f440a52](https://explorer-studio.genlayer.com/tx/0x02dcff67932f9a2c2e8d24d6bb09ec7f304a7bb1369ff328bfcb5dae0f440a52) |
+| assessPaused | [0xe685f0a1…b96a607](https://explorer-studio.genlayer.com/tx/0xe685f0a18cb90078d8d6ed29859b34c7e6db2e30dc041a935007ea825b96a607) |
+| resume | [0xa00f82c3…54cfc28](https://explorer-studio.genlayer.com/tx/0xa00f82c3dce8ef66bc6a3f67ca1a6246c4f140e8e3c2390a73145141f54cfc28) |
+| assess3 | [0xdfb03e73…70f5cfce](https://explorer-studio.genlayer.com/tx/0xdfb03e7375ffb1fa3d9451d3430585a6a76b135298dc37b93fe16e170f5cfce5) |
+| create4 | [0x81caf064…57707b8](https://explorer-studio.genlayer.com/tx/0x81caf0649dd2df98a8bf4e9a4f6f1f96e825596e0fffc4539214c9757b7707b8) |
+| evidence4 | [0xbb451d3e…96f8317b](https://explorer-studio.genlayer.com/tx/0xbb451d3e2a3ffa0158c042acf1384b1039065634c2bd0f458a35183b96f8317b) |
+| assessOutsider | [0x6ba7ad42…61ba766](https://explorer-studio.genlayer.com/tx/0x6ba7ad42429f984ff72c87fd3af435221c0424f866b77e0cb8a70423761ba766) |
+| create5 | [0x7d96e428…94a44419](https://explorer-studio.genlayer.com/tx/0x7d96e4285d55e99e5ae21d6bc668e06ed77962ee788eaaa96ffed57994a44419) |
+| evidence5 | [0x3463de48…4263725e](https://explorer-studio.genlayer.com/tx/0x3463de488f0ac4fe43ceef5496fc0eb92713b82e6de7419c90af74b4263725e9) |
+| assessMismatch | [0xd23b3ab7…a4bd2](https://explorer-studio.genlayer.com/tx/0xd23b3ab7a911371d09afe2d10c38732464c1686ed18b2971a66a463f206a4bd2) |
 
 ## 3. Honest notes
 
@@ -89,3 +106,5 @@ to see it on the explorer:
 - The jury is only as good as the photo: a clear, well-lit picture of the
   goods gives a confident verdict. That is by design — unclear evidence fails
   safe toward the shipper.
+- The two negative scenarios (S9, S10) leave their shipments IN_REVIEW with
+  escrow locked, exactly as designed — a blocked assessment changes nothing.

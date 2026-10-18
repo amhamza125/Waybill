@@ -5,6 +5,31 @@ Keep a Changelog, and versioning follows SemVer.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-18
+
+### Changed (steward review)
+- `assess_delivery` now rejects callers who are neither the shipper nor the
+  carrier (`ONLY_PARTY_ASSESS`) before any verdict logic runs.
+- `submit_evidence` takes a 4th parameter `evidence_sha256` (64-char lowercase
+  hex, validated) and commits it on-chain; `assess_delivery` recomputes the
+  SHA-256 over the assessed image bytes and fails closed on mismatch
+  (`EVIDENCE_MISMATCH`) with state unchanged.
+- `shipments` and `assessment_history` changed from `TreeMap[bigint, str]` to
+  `TreeMap[str, str]` with stringified integer keys; every access updated
+  (`_load`, `_save`, `_log`, all four views).
+- Dashboard: the submit flow hashes the photo bytes with SHA-256
+  (`crypto.subtle`) and passes the commitment as the 4th `submit_evidence`
+  argument.
+- `tests/`: 2 new adversarial scenarios (S10 outsider assessment blocked,
+  S11 evidence mismatch blocked); all 9 original scenarios re-run and passing.
+
+### Verified
+- Deployed and tested on GenLayer StudioNet (chain 61999).
+- Deployment: `0x22e6c4314c4c8D07b1875cB447C89778DbB11f42`
+  (https://explorer-studio.genlayer.com/address/0x22e6c4314c4c8D07b1875cB447C89778DbB11f42)
+- 11/11 scenarios passed; payout transactions FINALIZED; shipper 83.55 ->
+  82.30 GEN and carrier 6.75 -> 7.50 GEN matched contract records exactly.
+
 ## [1.0.0] - 2026-10-11
 
 ### Added

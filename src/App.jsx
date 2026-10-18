@@ -176,8 +176,10 @@ export default function App() {
     runWrite("resumeProto", "Resuming protocol", "resume_protocol", []);
 
   /**
-   * Two-step jury flow: 1) store the evidence photo URL + note,
-   * 2) send the photo bytes to the AI vision jury for a verdict + payouts.
+   * Two-step jury flow: 1) store the evidence photo URL + note and commit the
+   *    SHA-256 of the photo bytes, 2) send the photo bytes to the AI vision
+   *    jury for a verdict + payouts. The contract rejects bytes that don't
+   *    match the committed hash.
    */
   async function handleAssess(shipment, file, note, urlFallback) {
     const id = shipment.id;
@@ -210,13 +212,19 @@ export default function App() {
         }
       }
       const hex = await blobToHex(small);
+      // SHA-256 of the exact bytes the jury will grade -- committed on-chain
+      // so assess_delivery can verify the image wasn't swapped.
+      const hashBuf = await crypto.subtle.digest("SHA-256", await small.arrayBuffer());
+      const evidenceSha256 = [...new Uint8Array(hashBuf)]
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
 
       updateToast(toastId, "pending", "Step 1/2 — submitting evidence", "Waiting for signature…");
       const { hash: h1 } = await sendWrite(
         wallet,
         contractAddress,
         "submit_evidence",
-        [id, evidenceUrl, note || ""]
+        [id, evidenceUrl, note || "", evidenceSha256]
       );
       updateToast(
         toastId,

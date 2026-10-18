@@ -1,15 +1,21 @@
-shipper start GEN: 100 | carrier start GEN: 0
+GenLayer RPC error (eth_fillTransaction): Method not found: eth_fillTransaction
+funded outsider 0x6f1a5Ac76d959D9De7213124E7bfa656FE91D0E2 tx 0xb798023105c02cbbe383e16cbf96f4ddb659cbdec18186d095e6d0d55d157ce8
+shipper start GEN: 83.55 | carrier start GEN: 6.75
 [PASS] protocol_state :: {"paused":false,"owner":"0xD2aF69BB67d446526661A80a280820599c601ed3","shipment_count":"0","total_assessed":"0","contract_balance_wei":"0"}
-create0 tx 0x5535c972fc9c909bb05e8f905a22b334827aaedb439d17e15e6416006ce720e8
+create0 tx 0x5716ba8ff3352d263384ac7dacb469b2cbd8ed8d7cef94cfc2ad162cc5e88d02
 [PASS] create_shipment_escrow :: status=CREATED escrow=500000000000000000
-evidence0 tx 0x9dc1d1ec413557a00ada106971da92a6c0d39c1011453c858daedee518a209e8
-[PASS] submit_evidence :: status=IN_REVIEW
-assess0 tx (jury running) 0x260042094e80d173b4ef9410079a79b249f5af5cb91914cdb4759f878fa4cbfa
-[PASS] jury_intact :: verdict=INTACT conf=95 carrier_payout=500000000000000000 refund=0 notes="The sealed retail box shows no visible signs of impact, crushing, or water damage."
-assess1 tx (jury running) 0x441274a56f36cc1e50f0ef72c7363811c4c60d22673f987c02beffa4fd17dad5
-[PASS] jury_damaged :: verdict=TOTAL_LOSS conf=99 carrier_payout=0 refund=500000000000000000 notes="Box is completely destroyed with the front torn open, and the glass contents are visibly shattered into fragments with no salvageable items remaining."
+evidence0 tx 0xb56048e0e840d293d65eee3fa2c276b850acc51a37fd7b2be5509998509f2c3d
+[PASS] submit_evidence :: status=IN_REVIEW hash=3e0daac3625d21da…
+assess0 tx (jury running) 0x5c813bbe8fe3e23e44a5b1841a7c5beb8718a822be7b17de50b3074527ac8543
+[PASS] jury_intact :: verdict=INTACT conf=98 carrier_payout=500000000000000000 refund=0 notes="The package is sealed and shows no visible signs of damage or crushing."
+assess1 tx (jury running) 0x6bd7975e0d7fb5a10e803534befb53befb6dac43da8360f24e7d6b5b621963d1
+[PASS] jury_damaged :: verdict=TOTAL_LOSS conf=99 carrier_payout=0 refund=500000000000000000 notes="Box is severely crushed and torn open with broken contents visibly scattered."
 [PASS] cancel_refund :: status=CANCELLED
 [PASS] pause_gate :: assess while paused -> execution_result=ERROR
 [PASS] resume_then_assess :: verdict=INTACT status=RESOLVED
-[PASS] aggregate_reads :: shipments=4 history_events=13 assessed=3 contract_balance_wei=250000000000000000
-MAIN TEST DONE
+assessOutsider tx 0x6ba7ad42429f984ff72c87fd3af435221c0424f866b77e0cb8a70423761ba766
+[PASS] outsider_assessment_blocked :: execution_result=ERROR err_has_ONLY_PARTY_ASSESS=true status=IN_REVIEW payouts_untouched=true
+assessMismatch tx 0xd23b3ab7a911371d09afe2d10c38732464c1686ed18b2971a66a463f206a4bd2
+[PASS] evidence_mismatch_blocked :: execution_result=ERROR err_has_EVIDENCE_MISMATCH=true status=IN_REVIEW payouts_untouched=true
+[PASS] aggregate_reads :: shipments=6 history_events=17 assessed=3 contract_balance_wei=500000000000000000
+DONE: 11/11 scenarios passed

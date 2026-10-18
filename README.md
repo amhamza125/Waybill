@@ -6,9 +6,24 @@ automatically. No intermediary, no chargebacks, no "he said, she said."
 
 ## Live deployments (GenLayer StudioNet, chain `61999`)
 
-- **Contract:** `0x1290Bb9a5B6b897f01184bdC5650c5065896E570` — [explorer](https://explorer-studio.genlayer.com/address/0x1290Bb9a5B6b897f01184bdC5650c5065896E570) · deployed and verified on StudioNet.
-- **Verification record:** [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — specs, the 9/9 pass table, and every transaction hash with explorer links.
+- **Contract (v2):** `0x22e6c4314c4c8D07b1875cB447C89778DbB11f42` — [explorer](https://explorer-studio.genlayer.com/address/0x22e6c4314c4c8D07b1875cB447C89778DbB11f42) · deployed and verified on StudioNet.
+- **Contract (v1):** `0x1290Bb9a5B6b897f01184bdC5650c5065896E570` — [explorer](https://explorer-studio.genlayer.com/address/0x1290Bb9a5B6b897f01184bdC5650c5065896E570) · superseded by v2.
+- **Verification record:** [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — specs, the 11/11 pass table, and every transaction hash with explorer links.
 - **Test suite:** [`tests/`](tests/) — the runnable end-to-end suite, with raw results in [`tests/results/`](tests/results/).
+
+## What changed in v2
+
+A steward review asked for four hardening changes, and I built them in:
+
+1. **Only the shipment's shipper or carrier can trigger the jury.** Anyone
+   else gets rejected before any verdict logic runs.
+2. **The photo is cryptographically bound to the evidence.** Submitting
+   evidence commits the SHA-256 of the photo bytes; the jury can only grade
+   bytes that hash to the committed value. Swapped photos fail closed.
+3. **Storage key types fixed.** `shipments` and `assessment_history` now use
+   string keys instead of the incompatible integer-key declarations.
+4. **Two new adversarial scenarios** cover both gates, and all 9 original
+   scenarios still pass — 11/11, payouts verified to the wei.
 
 ## What it is
 
@@ -45,7 +60,7 @@ to TOTAL_LOSS, so fake evidence can't steal escrow.
 
 ## Status
 
-Tested end-to-end on StudioNet: 9/9 scenarios passed, payouts verified to the
+Tested end-to-end on StudioNet: 11/11 scenarios passed, payouts verified to the
 wei — see `docs/VERIFICATION.md` for the full evidence with explorer links.
 
 - [x] Contract written, deployed, and verified on StudioNet

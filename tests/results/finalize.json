@@ -1,15 +1,15 @@
 {
   "payouts_ok": true,
-  "shipper_before": "100.0000",
-  "shipper_after": "99.2500",
-  "shipper_expected": "99.2500",
-  "carrier_before": "0.0000",
-  "carrier_after": "0.7500",
-  "carrier_expected": "0.7500",
+  "shipper_before": "83.5500",
+  "shipper_after": "82.3000",
+  "shipper_expected": "82.3000",
+  "carrier_before": "6.7500",
+  "carrier_after": "7.5000",
+  "carrier_expected": "7.5000",
   "tx_statuses": {
-    "assess0": "FINALIZED",
-    "assess1": "FINALIZED",
-    "cancel2": "FINALIZED",
-    "assess3": "FINALIZED"
+    "0x5c813bbe8fe3e23e44a5b1841a7c5beb8718a822be7b17de50b3074527ac8543": "FINALIZED",
+    "0x6bd7975e0d7fb5a10e803534befb53befb6dac43da8360f24e7d6b5b621963d1": "FINALIZED",
+    "0x5f7741f614186b3c06f7be0305d0d23eba857aec43bf01c4e2e2bf166363d9eb": "FINALIZED",
+    "0xdfb03e7375ffb1fa3d9451d3430585a6a76b135298dc37b93fe16e170f5cfce5": "FINALIZED"
   }
 }

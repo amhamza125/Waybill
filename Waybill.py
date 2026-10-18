@@ -1,14 +1,25 @@
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 from genlayer import *
 import json
+import hashlib
 # ---------------------------------------------------------------------------
-# Waybill v1 -- trustless freight settlement (GenLayer)
+# Waybill v2 -- trustless freight settlement (GenLayer)
 # A shipper locks GEN escrow when creating a shipment. On delivery, the
 # carrier submits photo evidence; an AI vision jury (validator consensus)
 # classifies the damage and the contract releases real GEN payouts:
-# INTACT -> carrier 100% | MINOR_DAMAGE -> 85/15 | MAJOR_DAMAGE -> 40/60 |
+# INTACT -> carrier 100% | MINOR_DAMAGE -> 85-15 | MAJOR_DAMAGE -> 40-60 |
 # TOTAL_LOSS -> shipper refunded 100%.
 # Payouts are real EVM value transfers executed at finalization.
+#
+# v2 changes (steward review):
+#  1. assess_delivery is gated to the shipment's shipper or carrier only
+#     (ONLY_PARTY_ASSESS) -- outsiders can no longer trigger the jury.
+#  2. submit_evidence commits a SHA-256 of the photo bytes; assess_delivery
+#     recomputes the hash over the assessed bytes and fails closed on
+#     mismatch (EVIDENCE_MISMATCH) -- the jury can only grade the exact
+#     bytes that were committed.
+#  3. shipments and assessment_history now use TreeMap[str, str] with
+#     stringified integer keys (was TreeMap[bigint, str]).
 # Deployed on GenLayer StudioNet (chain 61999).
 # ---------------------------------------------------------------------------
 
@@ -29,6 +40,7 @@ _CARRIER_BPS = {
     "MAJOR_DAMAGE": 4000,
     "TOTAL_LOSS": 0,
 }
+_HEXCHARS = "0123456789abcdef"
 _MAX_SHIPMENTS = 5000
 _MAX_HISTORY = 200
 
@@ -37,9 +49,9 @@ class Waybill(gl.Contract):
     owner: str
     protocol_paused: bool          # owner-only emergency stop -- never auto-set
     shipment_count: bigint
-    shipments: TreeMap[bigint, str]         # shipment id -> JSON
+    shipments: TreeMap[str, str]            # str(shipment id) -> JSON
     party_shipments: TreeMap[str, str]     # address -> JSON list of shipment ids
-    assessment_history: TreeMap[bigint, str]
+    assessment_history: TreeMap[str, str]  # str(seq) -> JSON
     activity_count: bigint
     total_assessed: bigint
 
@@ -55,16 +67,17 @@ class Waybill(gl.Contract):
     # -- internal helpers -------------------------------------------------
     def _load(self, shipment_id: bigint):
         sid = bigint(shipment_id)
-        if sid not in self.shipments:
+        key = str(int(sid))
+        if key not in self.shipments:
             raise gl.vm.UserError("SHIPMENT_NOT_FOUND")
-        return sid, json.loads(self.shipments[sid])
+        return sid, json.loads(self.shipments[key])
 
     def _save(self, sid: bigint, data: dict) -> None:
-        self.shipments[sid] = json.dumps(data)
+        self.shipments[str(int(sid))] = json.dumps(data)
 
     def _log(self, payload: dict) -> None:
         self.activity_count += 1
-        self.assessment_history[self.activity_count] = json.dumps(payload)
+        self.assessment_history[str(int(self.activity_count))] = json.dumps(payload)
 
     def _index_party(self, addr: str, sid: bigint) -> None:
         if addr in self.party_shipments:
@@ -108,6 +121,7 @@ class Waybill(gl.Contract):
             "escrow_wei": str(escrow),
             "status": "CREATED",
             "evidence_url": "",
+            "evidence_sha256": "",
             "condition_note": "",
             "verdict": "N/A",
             "confidence": 0,
@@ -150,7 +164,8 @@ class Waybill(gl.Contract):
 
     @gl.public.write
     def submit_evidence(
-        self, shipment_id: bigint, evidence_url: str, condition_note: str
+        self, shipment_id: bigint, evidence_url: str, condition_note: str,
+        evidence_sha256: str,
     ) -> str:
         sid, data = self._load(shipment_id)
         sender = str(gl.message.sender_address)
@@ -160,7 +175,11 @@ class Waybill(gl.Contract):
             raise gl.vm.UserError("BAD_STATUS: evidence already submitted for this shipment")
         if not evidence_url.strip():
             raise gl.vm.UserError("EVIDENCE_REQUIRED: provide a photo URL of the delivered goods")
+        h = evidence_sha256.strip().lower()
+        if len(h) != 64 or any(c not in _HEXCHARS for c in h):
+            raise gl.vm.UserError("INVALID_EVIDENCE_HASH: evidence_sha256 must be 64 lowercase hex chars")
         data["evidence_url"] = evidence_url.strip()
+        data["evidence_sha256"] = h
         data["condition_note"] = condition_note.strip()
         data["status"] = "IN_REVIEW"
         self._save(sid, data)
@@ -168,6 +187,7 @@ class Waybill(gl.Contract):
             "type": "EVIDENCE",
             "shipment_id": int(sid),
             "evidence_url": data["evidence_url"],
+            "evidence_sha256": h,
             "message": f"EVIDENCE_SUBMITTED: #{int(sid)} awaiting AI jury assessment",
         })
         return f"EVIDENCE_SUBMITTED: #{int(sid)} awaiting AI jury assessment."
@@ -177,10 +197,17 @@ class Waybill(gl.Contract):
         if self.protocol_paused:
             raise gl.vm.UserError("PROTOCOL_PAUSED: owner has engaged the emergency stop")
         sid, data = self._load(shipment_id)
+        sender = str(gl.message.sender_address)
+        if sender != data["shipper"] and sender != data["carrier"]:
+            raise gl.vm.UserError("ONLY_PARTY_ASSESS: only the shipper or carrier can trigger assessment")
         if data["status"] != "IN_REVIEW":
             raise gl.vm.UserError("BAD_STATUS: submit evidence before assessment")
         if len(image_data) == 0:
             raise gl.vm.UserError("EVIDENCE_REQUIRED: image bytes missing")
+        # Cryptographic binding: the assessed bytes must hash to the evidence
+        # committed at submit_evidence time. Anything else fails closed.
+        if hashlib.sha256(bytes(image_data)).hexdigest() != data.get("evidence_sha256", ""):
+            raise gl.vm.UserError("EVIDENCE_MISMATCH: image bytes do not match the committed evidence hash")
 
         escrow = u256(int(data["escrow_wei"]))
 
@@ -270,16 +297,16 @@ class Waybill(gl.Contract):
     # -- views ------------------------------------------------------------
     @gl.public.view
     def get_shipment(self, shipment_id: bigint) -> str:
-        sid = bigint(shipment_id)
-        if sid not in self.shipments:
+        key = str(int(bigint(shipment_id)))
+        if key not in self.shipments:
             return "NOT_FOUND"
-        return self.shipments[sid]
+        return self.shipments[key]
 
     @gl.public.view
     def get_all_shipments(self) -> str:
         out = []
         for i in range(int(self.shipment_count)):
-            out.append(json.loads(self.shipments[bigint(i)]))
+            out.append(json.loads(self.shipments[str(i)]))
         return json.dumps(out)
 
     @gl.public.view
@@ -288,7 +315,7 @@ class Waybill(gl.Contract):
             return "[]"
         out = []
         for sid in json.loads(self.party_shipments[party]):
-            out.append(json.loads(self.shipments[bigint(sid)]))
+            out.append(json.loads(self.shipments[str(sid)]))
         return json.dumps(out)
 
     @gl.public.view
@@ -299,7 +326,7 @@ class Waybill(gl.Contract):
         start = max(1, total - limit + 1)
         out = []
         for i in range(start, total + 1):
-            out.append(json.loads(self.assessment_history[bigint(i)]))
+            out.append(json.loads(self.assessment_history[str(i)]))
         return json.dumps(out)
 
     @gl.public.view
