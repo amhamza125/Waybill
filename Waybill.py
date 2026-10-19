@@ -136,6 +136,8 @@ class Waybill(gl.Contract):
     def create_shipment(
         self, carrier: str, label: str, description: str,
         appeal_window_sec: int = _DEFAULT_APPEAL_WINDOW,
+        deadline_unix: int = 0,
+        penalty_bps: int = 0,
     ) -> str:
         escrow = gl.message.value
         if escrow == u256(0):
@@ -152,6 +154,16 @@ class Waybill(gl.Contract):
         window = int(appeal_window_sec)
         if window < _MIN_APPEAL_WINDOW or window > _MAX_APPEAL_WINDOW:
             raise gl.vm.UserError("INVALID_APPEAL_WINDOW: must be 300-86400 seconds")
+        # Late-delivery penalty (optional). Deadline must be at least 1h out
+        # (on-chain, so bypassing the UI can't set predatory deadlines).
+        deadline = int(deadline_unix)
+        pbps = int(penalty_bps)
+        if deadline != 0 or pbps != 0:
+            now0 = int(time.time())
+            if deadline <= now0 + 3600:
+                raise gl.vm.UserError("INVALID_DEADLINE: must be at least 1h in the future")
+            if pbps <= 0 or pbps > 2000:
+                raise gl.vm.UserError("INVALID_PENALTY_BPS: must be 1-2000 (max 20%)")
 
         sid = self.shipment_count
         shipper = str(gl.message.sender_address)
@@ -174,6 +186,9 @@ class Waybill(gl.Contract):
             "appeal_window_sec": window,
             "appeal_deadline": 0,
             "appeal": "",
+            "deadline_unix": deadline,
+            "penalty_bps": pbps,
+            "evidence_time": 0,
         }
         self._save(sid, data)
         self.shipment_count += 1
@@ -228,6 +243,10 @@ class Waybill(gl.Contract):
         data["evidence_url"] = evidence_url.strip()
         data["evidence_sha256"] = h
         data["condition_note"] = condition_note.strip()
+        # Consensus-pinned delivery time: the deadline is judged against this,
+        # never against assessment/settle time (so a slow assessor can't
+        # manufacture lateness, and backdating is impossible).
+        data["evidence_time"] = int(time.time())
         data["status"] = "IN_REVIEW"
         self._save(sid, data)
         self._log({
@@ -434,6 +453,7 @@ class Waybill(gl.Contract):
         escrow = u256(int(data["escrow_wei"]))
         carrier_amt = escrow * u256(new_bps) // u256(10000)
         shipper_amt = escrow - carrier_amt
+        carrier_amt, shipper_amt, penalty_wei = self._apply_late_penalty(data, carrier_amt, shipper_amt)
 
         data["status"] = "RESOLVED"
         data["verdict"] = new_verdict
@@ -469,6 +489,19 @@ class Waybill(gl.Contract):
             f"bond {bond_outcome}."
         )
 
+    def _apply_late_penalty(self, data, carrier_amt, shipper_amt):
+        # Deterministic late-delivery penalty: if evidence landed after the
+        # shipper-set deadline, deduct penalty_bps from the carrier's
+        # post-verdict share and credit it to the shipper. Not jury-decided,
+        # not appealable. TOTAL_LOSS (zero carrier share) is a natural no-op.
+        deadline = int(data.get("deadline_unix", 0) or 0)
+        pbps = int(data.get("penalty_bps", 0) or 0)
+        ev_time = int(data.get("evidence_time", 0) or 0)
+        if deadline == 0 or pbps == 0 or ev_time <= deadline:
+            return carrier_amt, shipper_amt, 0
+        penalty = int(carrier_amt) * pbps // 10000
+        return int(carrier_amt) - penalty, int(shipper_amt) + penalty, penalty
+
     @gl.public.write
     def settle_shipment(self, shipment_id: bigint) -> str:
         if self.protocol_paused:
@@ -485,8 +518,16 @@ class Waybill(gl.Contract):
         self._save(sid, data)
         self.total_assessed += 1
 
-        self._pay(data["carrier"], u256(int(data["carrier_payout_wei"])))
-        self._pay(data["shipper"], u256(int(data["shipper_refund_wei"])))
+        carrier_amt = u256(int(data["carrier_payout_wei"]))
+        shipper_amt = u256(int(data["shipper_refund_wei"]))
+        carrier_amt, shipper_amt, penalty_wei = self._apply_late_penalty(data, carrier_amt, shipper_amt)
+        if penalty_wei:
+            data["carrier_payout_wei"] = str(carrier_amt)
+            data["shipper_refund_wei"] = str(shipper_amt)
+            data["penalty_wei"] = str(penalty_wei)
+            self._save(sid, data)
+        self._pay(data["carrier"], u256(carrier_amt))
+        self._pay(data["shipper"], u256(shipper_amt))
 
         self._log({
             "type": "SETTLE",

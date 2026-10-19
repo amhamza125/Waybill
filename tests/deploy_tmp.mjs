@@ -1,0 +1,12 @@
+import { createClient } from 'genlayer-js';
+import { studionet } from 'genlayer-js/chains';
+import { privateKeyToAccount } from 'viem/accounts';
+import { readFileSync, writeFileSync } from 'fs';
+const w = JSON.parse(readFileSync('/home/hatch/workspace/waybill-test/test-wallet.json'));
+const client = createClient({ chain: studionet, account: privateKeyToAccount(w.privateKey) });
+const code = readFileSync('/home/hatch/workspace/waybill-package/Waybill.py', 'utf-8');
+const h = await client.deployContract({ code, args: [] });
+const r = await client.waitForTransactionReceipt({ hash: h, status: 'ACCEPTED', retries: 120, interval: 5000 });
+const addr = r.contract_address || r.to;
+console.log('status:', r.status, 'to:', addr);
+writeFileSync('/tmp/wb3/deploy.json', JSON.stringify({ tx: h, address: addr }));
