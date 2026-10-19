@@ -1,8 +1,8 @@
 {
-  "contract": "0x22e6c4314c4c8D07b1875cB447C89778DbB11f42",
+  "contract": "0x245B2Df870A449B30526e02B129E275d28634DDF",
   "shipper": "0xD2aF69BB67d446526661A80a280820599c601ed3",
   "carrier": "0x0BbA411375d7074178980E610B5311dD6Ed34d74",
-  "outsider": "0x6f1a5Ac76d959D9De7213124E7bfa656FE91D0E2",
+  "outsider": "0xC527E28F3cDf486F2CdCea1cFCb1FD923Dba3B1B",
   "steps": [
     {
       "name": "protocol_state",
@@ -10,9 +10,24 @@
       "info": "{\"paused\":false,\"owner\":\"0xD2aF69BB67d446526661A80a280820599c601ed3\",\"shipment_count\":\"0\",\"total_assessed\":\"0\",\"contract_balance_wei\":\"0\"}"
     },
     {
+      "name": "window_rejected_short",
+      "pass": true,
+      "info": "window=60s -> reverted"
+    },
+    {
+      "name": "window_rejected_long",
+      "pass": true,
+      "info": "window=90000s -> reverted"
+    },
+    {
+      "name": "default_window_24h",
+      "pass": true,
+      "info": "window=86400"
+    },
+    {
       "name": "create_shipment_escrow",
       "pass": true,
-      "info": "status=CREATED escrow=500000000000000000"
+      "info": "status=CREATED escrow=500000000000000000 window=300"
     },
     {
       "name": "submit_evidence",
@@ -20,14 +35,14 @@
       "info": "status=IN_REVIEW hash=3e0daac3625d21da…"
     },
     {
-      "name": "jury_intact",
+      "name": "jury_intact_awaits_appeal",
       "pass": true,
-      "info": "verdict=INTACT conf=98 carrier_payout=500000000000000000 refund=0 notes=\"The package is sealed and shows no visible signs of damage or crushing.\""
+      "info": "verdict=INTACT conf=97 tentative_carrier=500000000000000000 refund=0 deadline=1792391141 contract_holds=1000000000000000000"
     },
     {
-      "name": "jury_damaged",
+      "name": "jury_damaged_awaits_appeal",
       "pass": true,
-      "info": "verdict=TOTAL_LOSS conf=99 carrier_payout=0 refund=500000000000000000 notes=\"Box is severely crushed and torn open with broken contents visibly scattered.\""
+      "info": "verdict=TOTAL_LOSS conf=99 tentative_carrier=0 refund=500000000000000000"
     },
     {
       "name": "cancel_refund",
@@ -42,55 +57,187 @@
     {
       "name": "resume_then_assess",
       "pass": true,
-      "info": "verdict=INTACT status=RESOLVED"
+      "info": "verdict=INTACT status=AWAITING_APPEAL"
     },
     {
       "name": "outsider_assessment_blocked",
       "pass": true,
-      "info": "execution_result=ERROR err_has_ONLY_PARTY_ASSESS=true status=IN_REVIEW payouts_untouched=true"
+      "info": "err_has_ONLY_PARTY_ASSESS=true status=IN_REVIEW"
     },
     {
       "name": "evidence_mismatch_blocked",
       "pass": true,
-      "info": "execution_result=ERROR err_has_EVIDENCE_MISMATCH=true status=IN_REVIEW payouts_untouched=true"
+      "info": "err_has_EVIDENCE_MISMATCH=true status=IN_REVIEW"
+    },
+    {
+      "name": "settle_releases_payouts",
+      "pass": true,
+      "info": "s1=RESOLVED/500000000000000000 s2=RESOLVED/0 s4=RESOLVED"
+    },
+    {
+      "name": "double_settle_blocked",
+      "pass": true,
+      "info": "second settle reverted"
     },
     {
       "name": "aggregate_reads",
       "pass": true,
-      "info": "shipments=6 history_events=17 assessed=3 contract_balance_wei=500000000000000000"
+      "info": "shipments=7 history_events=22 assessed=3 contract_balance_wei=2250000000000000000"
+    },
+    {
+      "name": "appeal_filed_A",
+      "pass": true,
+      "info": "status=APPEALED"
+    },
+    {
+      "name": "double_appeal_blocked",
+      "pass": true,
+      "info": "second appeal reverted=true"
+    },
+    {
+      "name": "appeal_resolved_A",
+      "pass": true,
+      "info": "INTACT->INTACT bond_slashed(exp_slashed)"
+    },
+    {
+      "name": "done_A",
+      "pass": true,
+      "info": "id=7"
+    },
+    {
+      "name": "appeal_injection_resisted",
+      "pass": true,
+      "info": "TOTAL_LOSS->TOTAL_LOSS (hostile note ignored) bond_slashed(exp_slashed)"
+    },
+    {
+      "name": "done_B",
+      "pass": true,
+      "info": "id=8"
+    },
+    {
+      "name": "outsider_appeal_blocked",
+      "pass": true,
+      "info": "reverted=true"
+    },
+    {
+      "name": "outsider_resolve_blocked",
+      "pass": true,
+      "info": "reverted=true"
+    },
+    {
+      "name": "appeal_resolved_C",
+      "pass": true,
+      "info": "TOTAL_LOSS->TOTAL_LOSS bond_slashed(exp_slashed)"
+    },
+    {
+      "name": "done_C",
+      "pass": true,
+      "info": "id=9"
+    },
+    {
+      "name": "wrong_bond_rejected",
+      "pass": true,
+      "info": "reverted=true"
+    },
+    {
+      "name": "empty_note_rejected",
+      "pass": true,
+      "info": "reverted=true has_INVALID_DISPUTE_NOTE=true"
+    },
+    {
+      "name": "settle_D_ok",
+      "pass": true,
+      "info": "cleaned up"
+    },
+    {
+      "name": "done_D",
+      "pass": true,
+      "info": "id=10"
+    },
+    {
+      "name": "settle_during_window_blocked",
+      "pass": true,
+      "info": "reverted=true"
     }
   ],
   "txs": {
-    "fundOutsider": "0xb798023105c02cbbe383e16cbf96f4ddb659cbdec18186d095e6d0d55d157ce8",
-    "create0": "0x5716ba8ff3352d263384ac7dacb469b2cbd8ed8d7cef94cfc2ad162cc5e88d02",
-    "evidence0": "0xb56048e0e840d293d65eee3fa2c276b850acc51a37fd7b2be5509998509f2c3d",
-    "assess0": "0x5c813bbe8fe3e23e44a5b1841a7c5beb8718a822be7b17de50b3074527ac8543",
-    "create1": "0x6536e648267a6ce9c15ef44a1598b312e97ba7ac2db1721d6098d968438b7f52",
-    "evidence1": "0xd2783573acb919c3cd2fac15beea7effb18d6561d4f2fb4036bbfff05c23a61b",
-    "assess1": "0x6bd7975e0d7fb5a10e803534befb53befb6dac43da8360f24e7d6b5b621963d1",
-    "create2": "0x0b82340088e3ca7c87968d75fd528af9234c18df1af7a647c9ccc0b3517945b3",
-    "cancel2": "0x5f7741f614186b3c06f7be0305d0d23eba857aec43bf01c4e2e2bf166363d9eb",
-    "create3": "0xbfc2da866f816e109f80188a5c093b294e44e9829549d13dc5e9ae046f732d70",
-    "pause": "0x02dcff67932f9a2c2e8d24d6bb09ec7f304a7bb1369ff328bfcb5dae0f440a52",
-    "assessPaused": "0xe685f0a18cb90078d8d6ed29859b34c7e6db2e30dc041a935007ea825b96a607",
-    "resume": "0xa00f82c3dce8ef66bc6a3f67ca1a6246c4f140e8e3c2390a73145141f54cfc28",
-    "assess3": "0xdfb03e7375ffb1fa3d9451d3430585a6a76b135298dc37b93fe16e170f5cfce5",
-    "create4": "0x81caf0649dd2df98a8bf4e9a4f6f1f96e825596e0fffc4539214c9757b7707b8",
-    "evidence4": "0xbb451d3e2a3ffa0158c042acf1384b1039065634c2bd0f458a35183b96f8317b",
-    "assessOutsider": "0x6ba7ad42429f984ff72c87fd3af435221c0424f866b77e0cb8a70423761ba766",
-    "create5": "0x7d96e4285d55e99e5ae21d6bc668e06ed77962ee788eaaa96ffed57994a44419",
-    "evidence5": "0x3463de488f0ac4fe43ceef5496fc0eb92713b82e6de7419c90af74b4263725e9",
-    "assessMismatch": "0xd23b3ab7a911371d09afe2d10c38732464c1686ed18b2971a66a463f206a4bd2"
+    "fundOutsider": "0x5c2e4ebd7112923d732719584c933dd426cc71f5908b987e9c2c5c9196c91e4c",
+    "createDefault": "0xab219ae4b559b4eef90a08b5a4444b0c6eb712ebc8ae77b0a9ca4192401c03fe",
+    "create0": "0xb4fe81a474dc461ac632dd19900b72738697f46e725c2a8d3002945e6a1a2c6a",
+    "evidence0": "0xc90480736309b78881c4587b874ca5c1e5500926c50cb9e21422a1a026fd5f11",
+    "assess0": "0x88085b3943afb5534c2420a7ff45193e7fdbeb73ebf6652ec5fe873a8da366ca",
+    "create1": "0xa3c52c4ef3a5151c76c6a7dfdb81594c6958741a2bca4132db071d35824e9426",
+    "evidence1": "0x6a5d6021cd1af7f7d013d5c400f615fb3c2177e694ae6765388335e2c0b6075a",
+    "assess1": "0xb2567abadb586f0950ac0c3efcffb19d762ec745ce87f98513c6de318d1d370a",
+    "create2": "0x45c7a459725f920f096dd11cf923e8887bb72e0a0689916bb7fcb9ffee797c79",
+    "cancel2": "0xcc7c3f21c88096b82b8974cf97b7ee8aced1d8a4cba44f2325fbf2c134238e9e",
+    "create3": "0x9457bf5c17e25d3139fe629f82c3e2215f7fcefbc6ff10bd90e13c693b12d3ea",
+    "pause": "0x7b77801d4a10edb548113f1db5a81d365f1260da08e0a9a5575efe0bbc5cc830",
+    "assessPaused": "0x363d47c19c9034a86b0aa71af8070861392ba830b9297802228d28aee70cc9df",
+    "resume": "0x6fd290d57b9a14b569c8ce9ceed568d5a2b2d6b744e0f5cd0d2d89892498e134",
+    "assess3": "0x77a811eb59e9e953d3983403d9e7b1db2f15c809ae1cf5d45f530c9e790737c9",
+    "create4": "0x13ae0f58a85abd58881f24a991c8efdd69f5ea04d11cff65f0c21c447af9aae6",
+    "evidence4": "0xa390792d2735d9543fc8f5d4b943b828118c9eb6a3d95f74cab06eb211fa7f1d",
+    "assessOutsider": "0x5483b811a053ff169a6524c49213aadbceff9eea5896c8fb3b6e7df63634db4a",
+    "create5": "0x50daa6bd65f71b5387e1e761f7d7f65d0b43127ad7087d84227cd3bea542dbde",
+    "evidence5": "0x3994140b4f10ebfea39e488fb7e32281526302b2a5fed31a9b23fe70ef43fc41",
+    "assessMismatch": "0x0016a5391c1f54d9f3ba0d574ba302b77e5d95ee8ff2eba7b4bd3eb8f40354a0",
+    "settle1": "0x170d73e6bb0a6d2672c30a3a4cfdfd45d3572a086ed7f7fd21a9cbb617169b47",
+    "settle2": "0x010351316470e1f58ba6a7b8d778dd18b3e2eacede1777d675127150f0a836e3",
+    "settle4": "0x2b046e61fe98df74076ef015084faeaf770176070b3076c88231744a17d47bb3",
+    "fundOutsiderAppeals": {
+      "hash": "0xd599a0b17da098a91af4b205cc22a72d7f4ffa75fde0f684af2acf63f20bf2ae",
+      "to": "0x6fEC35208CE4e0e23E5b9d034e14425D8848031a",
+      "amount": "200000000000000000"
+    },
+    "appeal_A": "0x87e67a72ca0d42277ab5d0fddaa92279ede853116fc10af4233b5acb103f4d5f",
+    "resolve_A": "0x4f19de4524a5e0c669a11166e068cf36e6d5f75ad728f15e62f4b222b1444be9",
+    "appeal_B": "0x7f44ae2219b71fab276ebb182601ef93e31f47da64a504f4da00524a01cb47f1",
+    "resolve_B": "0x8bd936490ffb5197b325390a1d6ed2580627ea5384eb362764bd4ced01aa3b1e",
+    "appeal_C": "0x1cf68a8469514cf3ced643e0bdb64b682a8451f5e5d6fc3abbb4b01003ec2447",
+    "resolve_C": "0x7d79d0ce829b0d7fef664d4a52766ac6542bd3bdce3160db6410963e31add402",
+    "settle_D": "0x685817548767d3e940ba85d34e7de0dfc0ef9464c9cab8dbae5472ba384daa95"
   },
   "balances": {
-    "shipper_start": "83550000000000000100",
-    "carrier_start": "6750000000000000000"
+    "shipper_start": "60200000000000000100",
+    "carrier_start": "13500000000000000000"
   },
   "finalState": {
     "paused": false,
     "owner": "0xD2aF69BB67d446526661A80a280820599c601ed3",
-    "shipment_count": "6",
+    "shipment_count": "7",
     "total_assessed": "3",
-    "contract_balance_wei": "500000000000000000"
-  }
+    "contract_balance_wei": "2250000000000000000"
+  },
+  "appeals": [
+    {
+      "shipment_id": 7,
+      "appellant": "0xD2aF69BB67d446526661A80a280820599c601ed3",
+      "bond_wei": "50000000000000000",
+      "outcome": "slashed",
+      "first_verdict": "INTACT",
+      "second_verdict": "INTACT"
+    },
+    {
+      "shipment_id": 8,
+      "appellant": "0x0BbA411375d7074178980E610B5311dD6Ed34d74",
+      "bond_wei": "50000000000000000",
+      "outcome": "slashed",
+      "first_verdict": "TOTAL_LOSS",
+      "second_verdict": "TOTAL_LOSS"
+    },
+    {
+      "shipment_id": 9,
+      "appellant": "0xD2aF69BB67d446526661A80a280820599c601ed3",
+      "bond_wei": "50000000000000000",
+      "outcome": "slashed",
+      "first_verdict": "TOTAL_LOSS",
+      "second_verdict": "TOTAL_LOSS"
+    }
+  ],
+  "id_A": 7,
+  "id_B": 8,
+  "id_C": 9,
+  "id_D": 10,
+  "id_E": 11
 }
