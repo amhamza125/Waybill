@@ -44,6 +44,26 @@ Every settled shipment accrues a reputation record for its participants:
   read `UNPROVEN`, never a fake-good score. `get_reputation_leaderboard(n)`
   returns the ranked carrier board in a single walletless read.
 
+### Multi-leg shipments
+
+A shipment can now be an ordered route of 1–8 legs, each with its own
+carrier, escrow slice, photo evidence, jury verdict, appeal window, and
+optional deadline/penalty:
+
+- **Strictly sequential** — leg N+1 can't start until leg N is settled; at
+  most one non-terminal leg exists at a time. Per-leg amounts must sum
+  exactly to the escrow.
+- **Chain-of-custody baseline** — leg N's jury sees leg N−1's final verdict
+  as labeled context and grades *new* damage beyond it. Blame-shifting
+  between carriers is solved structurally.
+- **TOTAL_LOSS aborts the route** — downstream legs are marked ABORTED and
+  their escrow refunds to the shipper in full; settled legs keep payouts.
+- **Stall timeout** — if a leg's carrier goes silent for 72h, the shipper
+  alone can `cancel_leg` the stalled leg; downstream escrow refunds.
+- New writes: `submit_leg_evidence`, `assess_leg`, `appeal_leg`,
+  `resolve_leg_appeal`, `settle_leg` (permissionless), `cancel_leg`
+  (shipper-only). Single-leg shipments behave exactly as before.
+
 ## What it is
 
 Freight delivery has a trust problem. The shipper pays upfront and hopes the
