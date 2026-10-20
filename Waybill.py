@@ -22,6 +22,12 @@ import time
 # to release the recorded payout. The appeal window is set per shipment
 # (default 24h, on-chain bounded 300s-86400s).
 #
+# Reputation: every terminal settlement accrues an on-chain record per
+# participant -- carrier delivery performance (weighted intact-rate score)
+# plus each appellant's appeal win/loss track record. Self-dealt and dust
+# (< 0.1 GEN) shipments are excluded. get_reputation / get_reputation_leaderboard
+# views serve the dashboard board; fresh wallets read "UNPROVEN".
+#
 # Security properties:
 #  1. assess_delivery / appeal_assessment / resolve_appeal are gated to the
 #     shipment's shipper or carrier only -- outsiders hit a UserError.
@@ -61,6 +67,9 @@ _MIN_APPEAL_WINDOW = 300              # 5 minutes -- floor for live testability
 _MAX_APPEAL_WINDOW = 86400            # 24 hours -- ceiling against escrow hostage
 _DEFAULT_APPEAL_WINDOW = 86400
 _MAX_DISPUTE_NOTE = 280
+# Reputation constants.
+_MIN_REPUTATION_ESCROW_WEI = 100000000000000000  # 0.1 GEN -- dust floor
+_MAX_LEADERBOARD = 100
 
 
 class Waybill(gl.Contract):
@@ -72,6 +81,8 @@ class Waybill(gl.Contract):
     assessment_history: TreeMap[str, str]  # str(seq) -> JSON
     activity_count: bigint
     total_assessed: bigint
+    reputation: TreeMap[str, str]            # normalized address -> JSON record
+    reputation_addresses: str               # JSON list of tracked addresses (leaderboard index)
 
     def __init__(self):
         # TreeMap fields are NOT assigned here -- GenVM zero-initializes them
@@ -81,6 +92,7 @@ class Waybill(gl.Contract):
         self.shipment_count = 0
         self.activity_count = 0
         self.total_assessed = 0
+        self.reputation_addresses = "[]"
 
     # -- internal helpers -------------------------------------------------
     def _load(self, shipment_id: bigint):
@@ -131,6 +143,85 @@ class Waybill(gl.Contract):
         if sender != data["shipper"] and sender != data["carrier"]:
             raise gl.vm.UserError(code)
 
+    # -- reputation -------------------------------------------------------
+    def _rep_key(self, addr: str) -> str:
+        return str(addr).strip().lower()
+
+    def _get_rep(self, key: str) -> dict:
+        if key in self.reputation:
+            return json.loads(self.reputation[key])
+        return {
+            "address": key,
+            "as_carrier_completed": 0,
+            "intact": 0,
+            "minor": 0,
+            "major": 0,
+            "total_loss": 0,
+            "as_shipper_completed": 0,
+            "appeals_filed": 0,
+            "appeals_won": 0,
+            "appeals_lost": 0,
+            "score_bps": 0,
+            "last_active": 0,
+        }
+
+    def _save_rep(self, key: str, rec: dict) -> None:
+        self.reputation[key] = json.dumps(rec)
+        addrs = json.loads(self.reputation_addresses)
+        if key not in addrs:
+            addrs.append(key)
+            self.reputation_addresses = json.dumps(addrs)
+
+    def _record_reputation(self, shipper_addr: str, carrier_addr: str,
+                           escrow_wei: int, verdict: str, appeal) -> None:
+        # Reputation accrues ONLY on terminal settlement. Self-dealt
+        # (shipper == carrier) and dust (< 0.1 GEN) shipments are excluded;
+        # cancelled shipments never reach this path. Score is a public,
+        # weighted intact-rate over completed carrier deliveries:
+        #   score = (intact + 0.6*minor + 0.25*major) / completed
+        # computed here in integer basis points.
+        s_key = self._rep_key(shipper_addr)
+        c_key = self._rep_key(carrier_addr)
+        if s_key == c_key:
+            return
+        if int(escrow_wei) < _MIN_REPUTATION_ESCROW_WEI:
+            return
+        now = int(time.time())
+        # Carrier delivery performance.
+        crec = self._get_rep(c_key)
+        crec["as_carrier_completed"] += 1
+        if verdict == "INTACT":
+            crec["intact"] += 1
+        elif verdict == "MINOR_DAMAGE":
+            crec["minor"] += 1
+        elif verdict == "MAJOR_DAMAGE":
+            crec["major"] += 1
+        elif verdict == "TOTAL_LOSS":
+            crec["total_loss"] += 1
+        n = crec["as_carrier_completed"]
+        crec["score_bps"] = (
+            crec["intact"] * 10000 + crec["minor"] * 6000 + crec["major"] * 2500
+        ) // n
+        crec["last_active"] = now
+        self._save_rep(c_key, crec)
+        # Shipper activity.
+        srec = self._get_rep(s_key)
+        srec["as_shipper_completed"] += 1
+        srec["last_active"] = now
+        self._save_rep(s_key, srec)
+        # Appeal track record lands on the appellant: a failed appeal
+        # (verdict upheld, bond slashed) increments appeals_lost.
+        if appeal:
+            a_key = self._rep_key(appeal["appellant"])
+            arec = self._get_rep(a_key)
+            arec["appeals_filed"] += 1
+            if appeal.get("bond_outcome") == "refunded":
+                arec["appeals_won"] += 1
+            else:
+                arec["appeals_lost"] += 1
+            arec["last_active"] = now
+            self._save_rep(a_key, arec)
+
     # -- writes -----------------------------------------------------------
     @gl.public.write.payable
     def create_shipment(
@@ -158,8 +249,8 @@ class Waybill(gl.Contract):
         # (on-chain, so bypassing the UI can't set predatory deadlines).
         deadline = int(deadline_unix)
         pbps = int(penalty_bps)
+        now0 = int(time.time())
         if deadline != 0 or pbps != 0:
-            now0 = int(time.time())
             if deadline <= now0 + 3600:
                 raise gl.vm.UserError("INVALID_DEADLINE: must be at least 1h in the future")
             if pbps <= 0 or pbps > 2000:
@@ -466,6 +557,8 @@ class Waybill(gl.Contract):
         data["appeal"] = json.dumps(appeal)
         self._save(sid, data)
         self.total_assessed += 1
+        self._record_reputation(data["shipper"], data["carrier"],
+                               int(data["escrow_wei"]), new_verdict, appeal)
 
         self._pay(data["carrier"], carrier_amt)
         self._pay(data["shipper"], shipper_amt)
@@ -517,6 +610,8 @@ class Waybill(gl.Contract):
         data["status"] = "RESOLVED"
         self._save(sid, data)
         self.total_assessed += 1
+        self._record_reputation(data["shipper"], data["carrier"],
+                               int(data["escrow_wei"]), data["verdict"], None)
 
         carrier_amt = u256(int(data["carrier_payout_wei"]))
         shipper_amt = u256(int(data["shipper_refund_wei"]))
@@ -603,3 +698,38 @@ class Waybill(gl.Contract):
             "total_assessed": str(self.total_assessed),
             "contract_balance_wei": str(self.balance),
         })
+
+    @gl.public.view
+    def get_reputation(self, address: str) -> str:
+        # Fresh wallets have no record: "UNPROVEN", never a fake-good score.
+        key = self._rep_key(address)
+        if key not in self.reputation:
+            return "UNPROVEN"
+        return self.reputation[key]
+
+    @gl.public.view
+    def get_reputation_leaderboard(self, limit: int) -> str:
+        # Ranked carrier board in a single walletless RPC read. Only
+        # addresses with completed carrier deliveries are ranked; everyone
+        # tracked stays queryable via get_reputation.
+        if limit <= 0 or limit > _MAX_LEADERBOARD:
+            limit = _MAX_LEADERBOARD
+        addrs = json.loads(self.reputation_addresses)
+        recs = []
+        for key in addrs:
+            rec = json.loads(self.reputation[key])
+            if int(rec["as_carrier_completed"]) > 0:
+                recs.append(rec)
+        ranked = []
+        for rec in recs:
+            placed = False
+            for i in range(len(ranked)):
+                o = ranked[i]
+                if (int(rec["score_bps"]), int(rec["as_carrier_completed"])) > (
+                    int(o["score_bps"]), int(o["as_carrier_completed"])):
+                    ranked.insert(i, rec)
+                    placed = True
+                    break
+            if not placed:
+                ranked.append(rec)
+        return json.dumps(ranked[:int(limit)])

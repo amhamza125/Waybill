@@ -25,6 +25,25 @@ A steward review asked for four hardening changes, and I built them in:
 4. **Two new adversarial scenarios** cover both gates, and all 9 original
    scenarios still pass — 11/11, payouts verified to the wei.
 
+## What's new in v3
+
+### On-chain reputation
+
+Every settled shipment accrues a reputation record for its participants:
+
+- **Carrier score** — a weighted intact-rate over completed deliveries:
+  `score = (intact + 0.6 × minor + 0.25 × major) / completed`
+  (stored in basis points). Only real jury-assessed shipments count.
+- **Self-dealt and dust shipments are excluded** — a shipment where the
+  shipper and carrier are the same wallet, or escrow is under 0.1 GEN,
+  never touches reputation.
+- **Appeal track record** — filing an appeal records `appeals_filed`; if the
+  second jury upholds the verdict (bond slashed), `appeals_lost` increments
+  on the appellant. Appeal win-rate is surfaced separately from the score.
+- **Views** — `get_reputation(address)` returns the record; fresh wallets
+  read `UNPROVEN`, never a fake-good score. `get_reputation_leaderboard(n)`
+  returns the ranked carrier board in a single walletless read.
+
 ## What it is
 
 Freight delivery has a trust problem. The shipper pays upfront and hopes the
