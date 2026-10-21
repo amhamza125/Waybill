@@ -5,6 +5,60 @@ Keep a Changelog, and versioning follows SemVer.
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-10-21
+
+### Added
+- Bonded appeals: `assess_delivery` records the verdict without paying out
+  (status `AWAITING_APPEAL`, per-shipment window default 24h, on-chain bounds
+  300s–86400s). `appeal_assessment` (0.05 GEN bond, parties only, one per
+  shipment) triggers `resolve_appeal` — a second jury on the same
+  hash-bound photo plus a sanitized, injection-neutralized dispute note.
+  `settle_shipment` is permissionless after the window for liveness. The
+  bond is directional: refunded only if the new verdict improves the
+  appellant's payout share, otherwise slashed to the counterparty.
+- Late-delivery penalties: `create_shipment` accepts optional `deadline_unix`
+  (minimum 1h lead, enforced on-chain) and `penalty_bps` (max 20%).
+  Evidence time is consensus-pinned at submission; the penalty is
+  deterministic math on the carrier's post-verdict share — not jury-decided,
+  not appealable.
+- On-chain reputation: `reputation` TreeMap (string keys), updated only on
+  terminal settlement; self-dealt and dust (< 0.1 GEN) shipments excluded;
+  failed appeals recorded against the appellant; new `get_reputation` and
+  `get_reputation_leaderboard` views; fresh wallets read UNPROVEN.
+- Multi-leg shipments: `create_shipment` accepts ordered `legs_json` (1–8
+  legs, amounts summing to escrow); per-leg evidence, verdict, appeal
+  window, and penalty; strictly sequential legs; leg N's jury sees leg N−1's
+  final verdict as a labeled chain-of-custody baseline; TOTAL_LOSS aborts
+  the route with downstream escrow refunded; 72h per-leg stall timeout with
+  shipper-only `cancel_leg`. New writes: `submit_leg_evidence`,
+  `assess_leg`, `appeal_leg`, `resolve_leg_appeal`, `settle_leg`,
+  `cancel_leg`.
+- Dashboard overhaul (`src/`): sidebar app (Dashboard / Shipments / History
+  / Reputation / Settings / Admin) with mobile bottom nav; shipment detail
+  with a leg timeline stepper; History split into six tabs with composed
+  filters and CSV export; reputation leaderboard + address lookup; Settings
+  with contract override, RPC status, and theme toggle; owner-only Admin.
+  Every control is wired to the contract — no dummy clicks, every number
+  from chain.
+- `tests/`: full v3 suite — all v2 regressions plus appeal, penalty,
+  reputation, and multi-leg scenarios including outsider/double-appeal/
+  hostile-note negatives, blame-shift liability, and stall-cancel negatives;
+  `finalize.mjs` balance equation extended for bond deposits, refunds,
+  slashes, and ABORTED-leg refunds.
+
+### Verified
+- Deployed and tested on GenLayer StudioNet (chain 61999).
+- Deployment: `0xBA3Fef7ddcC768d4E770aec62413706Ef4735e80`
+  (https://explorer-studio.genlayer.com/address/0xBA3Fef7ddcC768d4E770aec62413706Ef4735e80)
+- 65/65 scenarios passed across five suites; 69/69 write transactions
+  FINALIZED. The directional bond-refund branch was exercised on a genuine
+  jury flip (MINOR_DAMAGE 75% → MAJOR_DAMAGE 82%): 0.05 GEN bond refunded,
+  new-verdict split paid to the wei, contract drained to exactly 0.
+- Fund conservation proven per settlement branch for all 26 shipments;
+  contract balance matches locked value and the protocol's reported balance
+  exactly; carrier and all seven satellite test wallets reconcile to the
+  wei.
+
 ## [2.0.0] - 2026-10-18
 
 ### Changed (steward review)

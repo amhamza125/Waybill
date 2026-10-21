@@ -6,9 +6,10 @@ automatically. No intermediary, no chargebacks, no "he said, she said."
 
 ## Live deployments (GenLayer StudioNet, chain `61999`)
 
-- **Contract (v2):** `0x22e6c4314c4c8D07b1875cB447C89778DbB11f42` — [explorer](https://explorer-studio.genlayer.com/address/0x22e6c4314c4c8D07b1875cB447C89778DbB11f42) · deployed and verified on StudioNet.
+- **Contract (v3):** `0xBA3Fef7ddcC768d4E770aec62413706Ef4735e80` — [explorer](https://explorer-studio.genlayer.com/address/0xBA3Fef7ddcC768d4E770aec62413706Ef4735e80) · deployed and verified on StudioNet.
+- **Contract (v2):** `0x22e6c4314c4c8D07b1875cB447C89778DbB11f42` — [explorer](https://explorer-studio.genlayer.com/address/0x22e6c4314c4c8D07b1875cB447C89778DbB11f42) · superseded by v3.
 - **Contract (v1):** `0x1290Bb9a5B6b897f01184bdC5650c5065896E570` — [explorer](https://explorer-studio.genlayer.com/address/0x1290Bb9a5B6b897f01184bdC5650c5065896E570) · superseded by v2.
-- **Verification record:** [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — specs, the 11/11 pass table, and every transaction hash with explorer links.
+- **Verification record:** [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — specs, the 65/65 pass table, and every transaction hash with explorer links.
 - **Test suite:** [`tests/`](tests/) — the runnable end-to-end suite, with raw results in [`tests/results/`](tests/results/).
 
 ## What changed in v2
@@ -26,6 +27,40 @@ A steward review asked for four hardening changes, and I built them in:
    scenarios still pass — 11/11, payouts verified to the wei.
 
 ## What's new in v3
+
+| Before (v2) | After (v3) |
+|---|---|
+| Verdict paid out immediately | Verdict enters an appeal window; either party can demand a second jury |
+| Appeals didn't exist | Bonded appeals (0.05 GEN): bond refunded only if the new verdict improves the appellant's share, otherwise slashed to the counterparty |
+| No delivery deadlines | Optional shipper-set deadline (1h minimum, on-chain) + penalty up to 20%, computed deterministically from consensus-pinned evidence time |
+| No participant history | On-chain reputation: weighted intact-rate score, self-deal/dust excluded, failed appeals recorded, leaderboard view |
+| Single-leg shipments only | Multi-leg routes (1–8 legs): sequential, per-leg escrow/verdict/appeal, chain-of-custody baseline, TOTAL_LOSS aborts the route |
+| Single-page dashboard | Sidebar app: Dashboard, Shipments (with leg timeline), 6-tab History + CSV export, Reputation board, Settings, owner-only Admin |
+
+### Bonded appeals
+
+A jury verdict no longer settles the shipment on the spot. It opens an
+appeal window — 24 hours by default, bounded on-chain between 5 minutes and
+24 hours. Either the shipper or the carrier can post a 0.05 GEN bond and
+call for a second jury round, which re-examines the same hash-bound photo
+alongside a sanitized dispute note (injection-neutralized, labeled
+untrusted — the photo decides, the note argues).
+
+The bond is directional: it returns to the appellant only when the second
+verdict improves their payout share. If the verdict is upheld, the bond is
+slashed to the counterparty — never left as residual wei in the contract.
+One appeal per shipment, no appeals of appeals, and a permissionless
+`settle_shipment` keeps the escrow moving even if both parties walk away.
+
+### Late-delivery penalties
+
+When creating a shipment, the shipper can attach a delivery deadline and a
+penalty rate. The floor is a 1-hour lead time enforced on-chain (not just in
+the UI), and the rate caps at 20%. The evidence timestamp comes from
+consensus at submission time — backdating is impossible — and the penalty is
+pure math on the carrier's post-verdict share. It is never jury-decided and
+never appealable. On a TOTAL_LOSS the carrier's share is zero, so the
+penalty is a no-op by construction.
 
 ### On-chain reputation
 
@@ -63,6 +98,30 @@ optional deadline/penalty:
 - New writes: `submit_leg_evidence`, `assess_leg`, `appeal_leg`,
   `resolve_leg_appeal`, `settle_leg` (permissionless), `cancel_leg`
   (shipper-only). Single-leg shipments behave exactly as before.
+
+### Dashboard overhaul
+
+The dashboard is now a sidebar app (bottom nav on mobile) with six sections:
+
+- **Dashboard** — stat cards (escrow locked, shipments, verdict distribution,
+  open appeals) plus a "Needs your attention" panel: your pending actions
+  and appeal windows closing within 6 hours.
+- **Shipments** — creation form on its own page (appeal window, optional
+  deadline + penalty, multi-leg builder with live sum validation), a
+  filterable grid, and a shipment detail view with a leg timeline stepper
+  showing each leg's carrier, status, verdict, evidence, and appeal state.
+- **History** — the on-chain event log split into six tabs (All, Shipments,
+  Verdicts, Appeals, Payouts & Penalties, Protocol) with composed filters
+  and CSV export.
+- **Reputation** — the on-chain leaderboard plus an address lookup ("check
+  a carrier before you ship"), with the exact scoring formula footnoted.
+- **Settings** — contract address override, live RPC status, theme toggle,
+  notification preferences.
+- **Admin** — owner-only pause/resume, moved out of the daily flow.
+
+Every control is real: each button triggers a contract read or write, each
+number comes from chain. Nothing is mocked, and anything that can't work
+yet doesn't ship.
 
 ## What it is
 
