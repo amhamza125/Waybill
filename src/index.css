@@ -2,30 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Ink-and-amber identity: light = ink on paper (default), dark = deep ink navy.
+   The `dark` class on <html> flips every theme-aware utility below. */
+
 :root {
+  color-scheme: light;
+}
+html.dark {
   color-scheme: dark;
 }
 
 html,
 body {
-  background-color: #05080f;
-  color: #e2e8f0;
+  background-color: #f6f1e6;
+  color: #221b10;
   font-family: Inter, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Aurora background: slow-drifting amber + indigo orbs over deep navy */
+html.dark body {
+  background-color: #070b14;
+  color: #e2e8f0;
+}
+
+/* Paper grain on light; aurora drift on dark */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   background:
+    radial-gradient(ellipse 60% 40% at 15% 0%, rgba(180, 140, 60, 0.10), transparent 70%),
+    radial-gradient(ellipse 50% 35% at 90% 100%, rgba(180, 140, 60, 0.08), transparent 70%),
+    #f6f1e6;
+}
+
+html.dark body::before {
+  background:
     radial-gradient(ellipse 55% 38% at 18% -6%, rgba(245, 158, 11, 0.13), transparent 70%),
     radial-gradient(ellipse 45% 35% at 85% 8%, rgba(99, 102, 241, 0.1), transparent 70%),
     radial-gradient(ellipse 60% 45% at 50% 115%, rgba(245, 158, 11, 0.06), transparent 70%),
-    #05080f;
+    #070b14;
   animation: aurora-drift 24s ease-in-out infinite alternate;
 }
 
@@ -51,26 +69,34 @@ body::before {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #d6cba8;
   border-radius: 8px;
 }
+html.dark *::-webkit-scrollbar-thumb {
+  background: #1e293b;
+}
 *::-webkit-scrollbar-thumb:hover {
+  background: #b8a97e;
+}
+html.dark *::-webkit-scrollbar-thumb:hover {
   background: #334155;
 }
 
 @layer components {
-  /* Premium glass card */
+  /* Card: paper white on light, glass on dark */
   .card {
-    @apply rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.055] to-white/[0.02] shadow-card backdrop-blur-xl;
-    box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.45),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    @apply rounded-2xl border border-[#e3d9bf] bg-cardpaper text-inktext shadow-paper;
+    @apply dark:border-white/[0.08] dark:bg-none dark:text-slate-100 dark:shadow-card dark:backdrop-blur-xl;
+  }
+  html.dark .card {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
   }
   .card-hover {
-    @apply transition-all duration-300 hover:border-brand/35 hover:shadow-glow hover:-translate-y-0.5;
+    @apply transition-all duration-300 hover:border-branddeep/50 hover:-translate-y-0.5;
+    @apply dark:hover:border-brand/35 dark:hover:shadow-glow;
   }
 
-  /* Primary button: amber gradient + glow + shine sweep */
+  /* Primary button: amber, works on both themes */
   .btn-primary {
     @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-b from-amber-400 to-amber-600 px-4 py-2.5 text-sm font-semibold text-ink transition-all duration-200 hover:shadow-glow hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none disabled:hover:brightness-100;
     box-shadow: 0 4px 18px rgba(245, 158, 11, 0.28);
@@ -88,22 +114,28 @@ body::before {
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-slate-200 backdrop-blur transition-all duration-200 hover:border-brand/50 hover:bg-white/[0.07] hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-[#ddd2b4] bg-white/60 px-4 py-2.5 text-sm font-semibold text-inktext transition-all duration-200 hover:border-branddeep/60 hover:bg-white hover:text-inktext active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
+    @apply dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:border-brand/50 dark:hover:bg-white/[0.07] dark:hover:text-white;
   }
+
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-300 transition-all duration-200 hover:bg-red-500/20 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-red-700/40 bg-red-700/10 px-4 py-2.5 text-sm font-semibold text-red-800 transition-all duration-200 hover:bg-red-700/20 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40;
+    @apply dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20 dark:hover:shadow-[0_0_20px_rgba(239,68,68,0.25)];
   }
 
   /* Refined inputs */
   .input {
-    @apply w-full rounded-xl border border-white/10 bg-black/30 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 outline-none backdrop-blur transition-all duration-200 focus:border-brand/60 focus:shadow-[0_0_0_3px_rgba(245,158,11,0.12)];
-    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.35);
+    @apply w-full rounded-xl border border-[#d9cfb2] bg-white px-3.5 py-2.5 text-sm text-inktext placeholder:text-stone-400 outline-none transition-all duration-200 focus:border-branddeep/70 focus:shadow-[0_0_0_3px_rgba(245,158,11,0.15)];
+    @apply dark:border-white/10 dark:bg-black/30 dark:text-slate-100 dark:placeholder:text-slate-600 dark:focus:border-brand/60 dark:focus:shadow-[0_0_0_3px_rgba(245,158,11,0.12)];
+    box-shadow: inset 0 2px 6px rgba(120, 95, 40, 0.08);
   }
   .label {
-    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400;
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-clay;
+    @apply dark:text-slate-400;
   }
   .stat-label {
-    @apply text-xs font-medium uppercase tracking-widest text-slate-500;
+    @apply text-xs font-medium uppercase tracking-widest text-stone-500;
+    @apply dark:text-slate-500;
   }
   .mono {
     @apply font-mono text-[13px] leading-relaxed;
@@ -111,12 +143,27 @@ body::before {
 
   /* Gradient display text */
   .text-gradient {
-    @apply bg-gradient-to-r from-brand via-gold to-brand bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-branddeep via-amber-600 to-branddeep bg-clip-text text-transparent;
+    @apply dark:from-brand dark:via-gold dark:to-brand;
   }
 
   /* Glowing status dot */
   .dot-glow {
     box-shadow: 0 0 8px 1px currentColor;
+  }
+
+  /* Sidebar link */
+  .navlink {
+    @apply flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold text-stone-500 transition-all duration-200 hover:bg-[#efe8d6] hover:text-inktext;
+    @apply dark:text-slate-400 dark:hover:bg-white/[0.05] dark:hover:text-white;
+  }
+  .navlink-active {
+    @apply bg-gradient-to-r from-amber-500/25 to-amber-500/5 text-inktext;
+    @apply dark:from-brand/25 dark:to-brand/5 dark:text-white;
+    box-shadow: inset 2px 0 0 #b45309;
+  }
+  html.dark .navlink-active {
+    box-shadow: inset 2px 0 0 #f59e0b;
   }
 }
 

@@ -35,20 +35,20 @@ export default function Toasts({ toasts, onDismiss }) {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="card animate-enter flex items-start gap-3 border-white/15 bg-panel2 p-4"
+          className="card animate-enter flex items-start gap-3 p-4"
         >
           <ToastIcon kind={t.kind} />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-white">{t.title}</p>
+            <p className="text-sm font-semibold text-inktext dark:text-white">{t.title}</p>
             {t.message && (
-              <p className="mono mt-1 break-words text-slate-400">{t.message}</p>
+              <p className="mono mt-1 break-words text-stone-600 dark:text-slate-400">{t.message}</p>
             )}
             {t.link && (
               <a
                 href={t.link}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-1.5 inline-block text-xs font-semibold text-brand hover:underline"
+                className="mt-1.5 inline-block text-xs font-semibold text-branddeep hover:underline dark:text-brand"
               >
                 View on explorer
               </a>
@@ -56,7 +56,7 @@ export default function Toasts({ toasts, onDismiss }) {
           </div>
           <button
             onClick={() => onDismiss(t.id)}
-            className="shrink-0 rounded-md p-1 text-slate-500 hover:bg-white/10 hover:text-white"
+            className="shrink-0 rounded-md p-1 text-stone-400 hover:bg-black/5 hover:text-inktext dark:text-slate-500 dark:hover:bg-white/10 dark:hover:text-white"
             aria-label="Dismiss"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
